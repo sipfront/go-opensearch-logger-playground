@@ -2,42 +2,54 @@ package main
 
 import (
 	// "context"
-	// "crypto/tls"
-	// "strings"
+	"crypto/tls"
+	"net/http"
+	"strings"
+
 	// "net/http"
 
 	"fmt"
 	"os"
 
-	// opensearchapi "github.com/opensearch-project/opensearch-go/v2/opensearchapi"
+	"github.com/sirupsen/logrus"
+
 	opensearch "github.com/opensearch-project/opensearch-go/v2"
-	log "github.com/sirupsen/logrus"
+	opensearchapi "github.com/opensearch-project/opensearch-go/v2/opensearchapi"
 )
 
 const IndexName = "sipfront-go-test"
 
-// Initialization of the logrus logger -> set-up o
-func init() {
+// Initialization of the logrus logger
+func SetUp(l *logrus.Logger) {
 	// Log as JSON instead of the default ASCII formatter.
-	log.SetFormatter(&log.JSONFormatter{})
+	l.Formatter = new(logrus.JSONFormatter)
+	l.Formatter = new(logrus.TextFormatter)
+	l.Formatter.(*logrus.TextFormatter).DisableColors = true
 
 	// Output to stdout instead of the default stderr
 	// Can be any io.Writer, see below for File example
-	log.SetOutput(os.Stdout)
+	l.Out = os.Stdout
 
 	// Only log the warning severity or above.
-	log.SetLevel(log.InfoLevel)
+	l.Level = logrus.TraceLevel
 }
 
 func main() {
-	log.WithFields(log.Fields{
+	// Set Up Logger ------------------------------------------------------------------------------
+	var log *logrus.Logger = logrus.New()
+	SetUp(log)
+
+	log.WithFields(logrus.Fields{
 		"dummy-field-1": "fizz",
 		"dummy-field-2": "buzz",
 		"dummy-field-3": "fizzbuzz",
 	}).Info("this-is-a-test")
 
-	// Initialize the client with SSL/TLS enabled.
+	// Initialize the client with SSL/TLS enabled. ------------------------------------------------
 	var clientConfiguration opensearch.Config = opensearch.Config{
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		},
 		Addresses: []string{
 			"https://vpc-sipfront-os-iepreu6yviwjk5rnzetncw7dfm.eu-central-1.es.amazonaws.com"},
 	}
@@ -50,4 +62,20 @@ func main() {
 
 	// Print OpenSearch version information on console.
 	fmt.Println(client.Info())
+
+	// Make a new index ---------------------------------------------------------------------------
+	settings := strings.NewReader(`{
+		'settings': {
+			'index': {
+				'number_of_shards': 1,
+				'number_of_replicas': 0
+				}
+			}
+		}`)
+
+	result := opensearchapi.IndicesCreateRequest{
+		Index: IndexName,
+		Body:  settings,
+	}
+
 }
