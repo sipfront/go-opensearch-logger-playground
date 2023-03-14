@@ -4,7 +4,6 @@ import (
 	// "context"
 	"crypto/tls"
 	"net/http"
-	"strings"
 
 	// "net/http"
 
@@ -14,7 +13,6 @@ import (
 	"github.com/sirupsen/logrus"
 
 	opensearch "github.com/opensearch-project/opensearch-go/v2"
-	opensearchapi "github.com/opensearch-project/opensearch-go/v2/opensearchapi"
 )
 
 const IndexName = "sipfront-go-test"
@@ -28,6 +26,8 @@ func SetUp(l *logrus.Logger) {
 
 	// Output to stdout instead of the default stderr
 	// Can be any io.Writer, see below for File example
+	//
+	// TODO -> change this line to somthing like http.Post(...)
 	l.Out = os.Stdout
 
 	// Only log the warning severity or above.
@@ -39,11 +39,14 @@ func main() {
 	var log *logrus.Logger = logrus.New()
 	SetUp(log)
 
-	log.WithFields(logrus.Fields{
+	var entry *logrus.Entry = log.WithFields(logrus.Fields{
 		"dummy-field-1": "fizz",
 		"dummy-field-2": "buzz",
 		"dummy-field-3": "fizzbuzz",
-	}).Info("this-is-a-test")
+	})
+	entry.Info("this-is-a-test")
+
+	fmt.Printf("message: %s\n", entry.Message)
 
 	// Initialize the client with SSL/TLS enabled. ------------------------------------------------
 	var clientConfiguration opensearch.Config = opensearch.Config{
@@ -64,18 +67,16 @@ func main() {
 	fmt.Println(client.Info())
 
 	// Make a new index ---------------------------------------------------------------------------
-	settings := strings.NewReader(`{
-		'settings': {
-			'index': {
-				'number_of_shards': 1,
-				'number_of_replicas': 0
-				}
-			}
-		}`)
-
-	result := opensearchapi.IndicesCreateRequest{
-		Index: IndexName,
-		Body:  settings,
-	}
-
+	// settings := strings.NewReader(`{
+	// 	'settings': {
+	// 		'index': {
+	// 			'number_of_shards': 1,
+	// 			'number_of_replicas': 0
+	// 			}
+	// 		}
+	// 	}`)
+	// result := opensearchapi.IndicesCreateRequest{
+	// 	Index: IndexName,
+	// 	Body:  settings,
+	// }
 }
