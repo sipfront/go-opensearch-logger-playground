@@ -94,17 +94,4 @@ func main() {
 	l.SetOutput(session)
 	l.Info("this-is-a-test")
 
-	// Make a new index -------------------------------------------------------------------------
-	// settings := strings.NewReader(`{
-	// 	'settings': {
-	// 		'index': {
-	// 			'number_of_shards': 1,
-	// 			'number_of_replicas': 0
-	// 			}
-	// 		}
-	// 	}`)
-	// result := opensearchapi.IndicesCreateRequest{
-	// 	Index: IndexName,
-	// 	Body:  settings,
-	// }
 }
