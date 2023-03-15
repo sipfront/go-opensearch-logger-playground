@@ -15,7 +15,7 @@ import (
 	opensearch "github.com/opensearch-project/opensearch-go/v2"
 )
 
-const IndexName = "sipfront-go-test"
+const IndexName = "sipfront"
 
 // Custom type which will later implement the Write method for logging directly to
 // Opensearch, without the help of using logstash.
@@ -49,12 +49,6 @@ func SetUp(l *logrus.Logger) {
 	l.Formatter = new(logrus.JSONFormatter)
 	l.Formatter = new(logrus.TextFormatter)
 	l.Formatter.(*logrus.TextFormatter).DisableColors = true
-
-	// Output to stdout instead of the default stderr
-	// Can be any io.Writer, see below for File example
-	//
-	// TODO -> change this line to somthing like http.Post(...)
-	// l.Out = os.Stdout
 
 	// Only log the warning severity or above.
 	l.Level = logrus.InfoLevel
@@ -91,7 +85,12 @@ func main() {
 
 	// Set up writer
 	var session *OpenSearchWriter = &OpenSearchWriter{Client: client}
+
+	// Output to opensearch instead of stderr/stdout
+	//
 	l.SetOutput(session)
 	l.Info("this-is-a-test")
 
+	// TODO Write a custom formater, such that the log is ESC compliant
+	// see https://github.com/elastic/ecs-logging-go-logrus/blob/main/formatter.go
 }
