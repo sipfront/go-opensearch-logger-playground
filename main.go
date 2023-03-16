@@ -1,7 +1,6 @@
 package main
 
 import (
-	// "context"
 	"context"
 	"crypto/tls"
 	"fmt"
@@ -9,14 +8,14 @@ import (
 	"os"
 	"strings"
 
-	"github.com/sirupsen/logrus"
-
 	opensearchapi "github.com/opensearch-project/opensearch-go/opensearchapi"
 	opensearch "github.com/opensearch-project/opensearch-go/v2"
+	"github.com/sirupsen/logrus"
 )
 
-const IndexName = "sipfront"
+const IndexName = "sipfront-go-test"
 
+// ------------------------------------------------------------------------------------------------
 // Custom type which will later implement the Write method for logging directly to
 // Opensearch, without the help of using logstash.
 type OpenSearchWriter struct {
@@ -24,11 +23,10 @@ type OpenSearchWriter struct {
 }
 
 // Writer interface to log directly to opensearch. Based on [SO-Post]
-//
 // [SO-Post] https://bit.ly/3Tj0fqe
 func (ow *OpenSearchWriter) Write(p []byte) (n int, err error) {
 
-	document := strings.NewReader(string(p))
+	var document *strings.Reader = strings.NewReader(string(p))
 	req := opensearchapi.IndexRequest{
 		Index:      IndexName,
 		DocumentID: "1",
@@ -43,28 +41,12 @@ func (ow *OpenSearchWriter) Write(p []byte) (n int, err error) {
 	return len(p), nil
 }
 
-// Initialization of the logrus logger
-func SetUp(l *logrus.Logger) {
-	// Log as JSON instead of the default ASCII formatter.
-	l.Formatter = new(logrus.JSONFormatter)
-	l.Formatter = new(logrus.TextFormatter)
-	l.Formatter.(*logrus.TextFormatter).DisableColors = true
-
-	// Only log the warning severity or above.
-	l.Level = logrus.InfoLevel
-}
-
 // The main entry point, who would have guessed, duh'?!
+//
+// TODO Write a custom formater, such that the log is ESC compliant, see:
+// - https://github.com/elastic/ecs-logging-go-logrus/blob/main/formatter.go or
+// - https://github.com/sirupsen/logrus/issues/719
 func main() {
-	// Set Up Logger ----------------------------------------------------------------------------
-	var l *logrus.Logger = logrus.New()
-	SetUp(l)
-	l.WithFields(logrus.Fields{
-		"dummy-field-1": "fizz",
-		"dummy-field-2": "buzz",
-		"dummy-field-3": "fizzbuzz",
-	})
-
 	// Initialize the client with SSL/TLS enabled. ----------------------------------------------
 	var clientConfiguration opensearch.Config = opensearch.Config{
 		Transport: &http.Transport{
@@ -83,14 +65,16 @@ func main() {
 	// Print OpenSearch version information on console.
 	fmt.Println(client.Info())
 
-	// Set up writer
-	var session *OpenSearchWriter = &OpenSearchWriter{Client: client}
+	// Set Up Logger ----------------------------------------------------------------------------
+	var l *logrus.Logger = &logrus.Logger{
+		Out:   &OpenSearchWriter{Client: client},
+		Level: logrus.InfoLevel,
+		Formatter: &OpensearchFormatter{
+			DisableHTMLEscape: true,
+			DataKey:           "test",
+			PrettyPrint:       true,
+		},
+	}
 
-	// Output to opensearch instead of stderr/stdout
-	//
-	l.SetOutput(session)
-	l.Info("this-is-a-test")
-
-	// TODO Write a custom formater, such that the log is ESC compliant
-	// see https://github.com/elastic/ecs-logging-go-logrus/blob/main/formatter.go
+	l.Info("plini")
 }
