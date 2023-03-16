@@ -28,11 +28,11 @@ func (ow *OpenSearchWriter) Write(p []byte) (n int, err error) {
 
 	var document *strings.Reader = strings.NewReader(string(p))
 	req := opensearchapi.IndexRequest{
-		Index:      IndexName,
-		DocumentID: "1",
-		Body:       document,
+		Index: IndexName,
+		Body:  document,
 	}
 
+	fmt.Println(document)
 	_, err = req.Do(context.Background(), ow.Client)
 	if err != nil {
 		return 0, err
@@ -69,12 +69,15 @@ func main() {
 	var l *logrus.Logger = &logrus.Logger{
 		Out:   &OpenSearchWriter{Client: client},
 		Level: logrus.InfoLevel,
-		Formatter: &OpensearchFormatter{
+		Formatter: &logrus.JSONFormatter{
+			TimestampFormat:   "2006-01-02 15:04:05",
 			DisableHTMLEscape: true,
-			DataKey:           "test",
+			FieldMap:          ecsFieldMap,
 			PrettyPrint:       true,
 		},
 	}
 
-	l.Info("plini")
+	l.WithFields(logrus.Fields{
+		"_index": IndexName,
+		"_type":  "_doc"}).Info("plink")
 }
