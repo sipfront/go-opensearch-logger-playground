@@ -10,10 +10,9 @@ import (
 
 	opensearchapi "github.com/opensearch-project/opensearch-go/opensearchapi"
 	opensearch "github.com/opensearch-project/opensearch-go/v2"
-	"github.com/sirupsen/logrus"
 )
 
-const IndexName = "sipfront-go-test"
+const IndexName = "sipfront-gotest-2023.03.20"
 
 // ------------------------------------------------------------------------------------------------
 // Custom type which will later implement the Write method for logging directly to
@@ -32,7 +31,6 @@ func (ow *OpenSearchWriter) Write(p []byte) (n int, err error) {
 		Body:  document,
 	}
 
-	fmt.Println(document)
 	_, err = req.Do(context.Background(), ow.Client)
 	if err != nil {
 		return 0, err
@@ -66,18 +64,18 @@ func main() {
 	fmt.Println(client.Info())
 
 	// Set Up Logger ----------------------------------------------------------------------------
-	var l *logrus.Logger = &logrus.Logger{
-		Out:   &OpenSearchWriter{Client: client},
-		Level: logrus.InfoLevel,
-		Formatter: &logrus.JSONFormatter{
-			TimestampFormat:   "2006-01-02 15:04:05",
-			DisableHTMLEscape: true,
-			FieldMap:          ecsFieldMap,
-			PrettyPrint:       true,
-		},
-	}
-
-	l.WithFields(logrus.Fields{
-		"_index": IndexName,
-		"_type":  "_doc"}).Info("plink")
+	// var l *logrus.Logger = &logrus.Logger{
+	// 	Out:   &OpenSearchWriter{Client: client},
+	// 	Level: logrus.InfoLevel,
+	// 	Formatter: &OpensearchFormatter{
+	// 		//TimestampFormat:   "2006-01-02 15:04:05",
+	// 		DisableHTMLEscape: true,
+	// 		// FieldMap:          ecsFieldMap,
+	// 		PrettyPrint: true,
+	// 	},
+	// }
+	//
+	// l.WithFields(logrus.Fields{
+	// 	"_index": IndexName,
+	// 	"_type":  "_doc"}).Info("plink")
 }

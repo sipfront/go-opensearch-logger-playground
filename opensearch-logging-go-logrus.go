@@ -28,7 +28,7 @@ import (
 
 const (
 	// ecsVersion holds the version of ECS with which the formatter is compatible.
-	ecsVersion = "1.6.0"
+	ecsVersion = "1.7.0"
 )
 
 var (
@@ -71,6 +71,7 @@ func (f *OpensearchFormatter) Format(e *logrus.Entry) ([]byte, error) {
 
 	if len(e.Data) > 0 {
 		extraData := data
+		fmt.Println(extraData)
 		if f.DataKey != "" {
 			extraData = make(logrus.Fields, len(e.Data))
 		}
