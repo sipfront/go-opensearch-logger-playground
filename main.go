@@ -27,14 +27,16 @@ func (ow *OpenSearchWriter) Write(p []byte) (n int, err error) {
 
 	var document *strings.Reader = strings.NewReader(string(p))
 	req := opensearchapi.IndexRequest{
-		Index: IndexName,
-		Body:  document,
+		Index:      IndexName,
+		DocumentID: "25",
+		Body:       document,
 	}
 
-	_, err = req.Do(context.Background(), ow.Client)
+	insertResponse, err := req.Do(context.Background(), ow.Client)
 	if err != nil {
 		return 0, err
 	}
+	fmt.Println(insertResponse)
 
 	return len(p), nil
 }
@@ -74,8 +76,42 @@ func main() {
 	// 		PrettyPrint: true,
 	// 	},
 	// }
+	// l.WithField("message", "dummy").Info("fizz")
+
+	// document := strings.NewReader(`{"message": "yada"}`)
 	//
-	// l.WithFields(logrus.Fields{
-	// 	"_index": IndexName,
-	// 	"_type":  "_doc"}).Info("plink")
+	// docId := "8"
+	// req := opensearchapi.IndexRequest{
+	// 	Index:      IndexName,
+	// 	DocumentID: docId,
+	// 	Body:       document,
+	// }
+	// insertResponse, err := req.Do(context.Background(), client)
+	// if err != nil {
+	// 	fmt.Println("failed to insert document ", err)
+	// 	os.Exit(1)
+	// }
+	// fmt.Println(insertResponse)
+
+	// Search for the document.
+	content := strings.NewReader(`{
+			"size": 10,
+			"query": {
+				"multi_match": {
+				"query": "yada",
+				"fields": ["message"]
+				}
+		   }
+		 }`)
+
+	search := opensearchapi.SearchRequest{
+		Body: content,
+	}
+
+	searchResponse, err := search.Do(context.Background(), client)
+	if err != nil {
+		fmt.Println("failed to search document ", err)
+		os.Exit(1)
+	}
+	fmt.Println(searchResponse)
 }
