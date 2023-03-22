@@ -29,7 +29,7 @@ const version = "1.6.0"
 
 var (
 	ecsFieldMap = logrus.FieldMap{
-		logrus.FieldKeyTime:  "@timestamp",
+		// logrus.FieldKeyTime:  "@timestamp",
 		logrus.FieldKeyMsg:   "message",
 		logrus.FieldKeyLevel: "level",
 	}
@@ -130,11 +130,11 @@ func (f *OpensearchFormatter) Format(e *logrus.Entry) ([]byte, error) {
 	e = &ecopy
 
 	jf := logrus.JSONFormatter{
-		TimestampFormat:   "2006-01-02 15:04:05",
+		// TimestampFormat:   "2006-01-02 15:04:05",
 		DisableHTMLEscape: f.DisableHTMLEscape,
-		FieldMap:          ecsFieldMap,
-		CallerPrettyfier:  f.CallerPrettyfier,
-		PrettyPrint:       f.PrettyPrint,
+		// FieldMap:          ecsFieldMap,
+		CallerPrettyfier: f.CallerPrettyfier,
+		PrettyPrint:      f.PrettyPrint,
 	}
 	return jf.Format(e)
 }

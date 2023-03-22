@@ -3,10 +3,12 @@ package main
 import (
 	"context"
 	"crypto/tls"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	opensearchapi "github.com/opensearch-project/opensearch-go/opensearchapi"
 	opensearch "github.com/opensearch-project/opensearch-go/v2"
@@ -15,9 +17,9 @@ import (
 
 // ------------------------------------------------------------------------------------------------
 // For test purposes
-const IndexName = "sipfront-gotest-v2-2023.03.22"
+const IndexName = "sipfront-gotest-v5-2023.03.22"
 
-var replacer = strings.NewReplacer("\n", "", " ", "")
+// var replacer = strings.NewReplacer("\n", "", " ", "")
 
 // ------------------------------------------------------------------------------------------------
 // Custom type which will later implement the Write method for logging directly to
@@ -26,23 +28,34 @@ type OpenSearchWriter struct {
 	Client *opensearch.Client
 }
 
-// Writer interface to log directly to opensearch. Based on [SO-Post]
-// [SO-Post] https://bit.ly/3Tj0fqe
-func (ow *OpenSearchWriter) Write(p []byte) (n int, err error) {
-	// https://stackoverflow.com/questions/45792309/bulk-api-malformed-action-metadata-line-3-expected-start-object-but-found
-	mapping := `{"mappings":{"properties":{"@timestamp":{"type":"date","format":"yyyy-MM-dd HH:mm:ss||yyyy-MM-dd||epoch_millis"},"function_name":{"type":"text"}}}}`
+type LogMessage struct {
+	Timestamp time.Time `json:"@timestamp"`
+	Message   string    `json:"message"`
+	Level     string    `json:"level"`
+}
 
-	fmt.Printf("%s\n%s\n", mapping, replacer.Replace(string(p)))
-	var document *strings.Reader = strings.NewReader(fmt.Sprintf("%s\n%s\n", mapping, replacer.Replace(string(p))))
-	req := opensearchapi.BulkRequest{
+func (ow *OpenSearchWriter) Write(p []byte) (n int, err error) {
+	now := time.Now().UTC()
+	logMessage := LogMessage{
+		Timestamp: now,
+		Message:   string(p),
+	}
+
+	logJson, err := json.Marshal(logMessage)
+	if err != nil {
+		return 0, err
+	}
+
+	var document *strings.Reader = strings.NewReader(string(logJson))
+	req := opensearchapi.IndexRequest{
 		Index: IndexName,
 		Body:  document,
 	}
+
 	insertResponse, err := req.Do(context.Background(), ow.Client)
 	if err != nil {
 		return 0, err
 	}
-	defer insertResponse.Body.Close()
 	fmt.Println(insertResponse)
 
 	return len(p), nil
@@ -80,4 +93,5 @@ func main() {
 		},
 	}
 	l.Info("Plonk")
+	l.Info("Blub")
 }
