@@ -10,9 +10,12 @@ import (
 
 	opensearchapi "github.com/opensearch-project/opensearch-go/opensearchapi"
 	opensearch "github.com/opensearch-project/opensearch-go/v2"
+	"github.com/sirupsen/logrus"
 )
 
-const IndexName = "sipfront-gotest-2023.03.20"
+// ------------------------------------------------------------------------------------------------
+// For test purposes
+const IndexName = "sipfront-gotest-v2-2023.03.22"
 
 // ------------------------------------------------------------------------------------------------
 // Custom type which will later implement the Write method for logging directly to
@@ -24,12 +27,10 @@ type OpenSearchWriter struct {
 // Writer interface to log directly to opensearch. Based on [SO-Post]
 // [SO-Post] https://bit.ly/3Tj0fqe
 func (ow *OpenSearchWriter) Write(p []byte) (n int, err error) {
-
 	var document *strings.Reader = strings.NewReader(string(p))
 	req := opensearchapi.IndexRequest{
-		Index:      IndexName,
-		DocumentID: "25",
-		Body:       document,
+		Index: IndexName,
+		Body:  document,
 	}
 
 	insertResponse, err := req.Do(context.Background(), ow.Client)
@@ -41,8 +42,6 @@ func (ow *OpenSearchWriter) Write(p []byte) (n int, err error) {
 	return len(p), nil
 }
 
-// The main entry point, who would have guessed, duh'?!
-//
 // TODO Write a custom formater, such that the log is ESC compliant, see:
 // - https://github.com/elastic/ecs-logging-go-logrus/blob/main/formatter.go or
 // - https://github.com/sirupsen/logrus/issues/719
@@ -65,53 +64,39 @@ func main() {
 	// Print OpenSearch version information on console.
 	fmt.Println(client.Info())
 
-	// Set Up Logger ----------------------------------------------------------------------------
-	// var l *logrus.Logger = &logrus.Logger{
-	// 	Out:   &OpenSearchWriter{Client: client},
-	// 	Level: logrus.InfoLevel,
-	// 	Formatter: &OpensearchFormatter{
-	// 		//TimestampFormat:   "2006-01-02 15:04:05",
-	// 		DisableHTMLEscape: true,
-	// 		// FieldMap:          ecsFieldMap,
-	// 		PrettyPrint: true,
-	// 	},
-	// }
-	// l.WithField("message", "dummy").Info("fizz")
-
-	// document := strings.NewReader(`{"message": "yada"}`)
-	//
-	// docId := "8"
-	// req := opensearchapi.IndexRequest{
-	// 	Index:      IndexName,
-	// 	DocumentID: docId,
-	// 	Body:       document,
-	// }
-	// insertResponse, err := req.Do(context.Background(), client)
-	// if err != nil {
-	// 	fmt.Println("failed to insert document ", err)
-	// 	os.Exit(1)
-	// }
-	// fmt.Println(insertResponse)
-
-	// Search for the document.
-	content := strings.NewReader(`{
-			"size": 10,
-			"query": {
-				"multi_match": {
-				"query": "yada",
-				"fields": ["message"]
-				}
-		   }
-		 }`)
-
-	search := opensearchapi.SearchRequest{
-		Body: content,
+	// IGNORE: Noy needed for creating an index document!
+	// Define index mapping.
+	mapping := strings.NewReader(`{
+		"mappings":{
+			"properties":{
+				"@timestamp":{
+					"type":"date",
+					"format":"yyyy-MM-dd HH:mm:ss||yyyy-MM-dd||epoch_millis"},
+				"function_name":{"type":"text"}
+			}
+		}
+	}`)
+	// Create an index with non-default settings.
+	res := opensearchapi.IndicesCreateRequest{
+		Index: IndexName,
+		Body:  mapping,
 	}
-
-	searchResponse, err := search.Do(context.Background(), client)
+	insertResponse, err := res.Do(context.Background(), client)
 	if err != nil {
-		fmt.Println("failed to search document ", err)
+		fmt.Println("cannot create", err)
 		os.Exit(1)
 	}
-	fmt.Println(searchResponse)
+	fmt.Println(insertResponse)
+
+	// Set Up Logger ----------------------------------------------------------------------------
+	var l *logrus.Logger = &logrus.Logger{
+		Out:   &OpenSearchWriter{Client: client},
+		Level: logrus.InfoLevel,
+		Formatter: &OpensearchFormatter{
+			// DataKey:           "labels",
+			DisableHTMLEscape: true,
+			PrettyPrint:       true,
+		},
+	}
+	l.Info("Plonk")
 }

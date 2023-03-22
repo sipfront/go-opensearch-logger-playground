@@ -1,4 +1,14 @@
-// Licensed to Elasticsearch B.V. under one or more contributor
+package main
+
+import (
+	"runtime"
+	"strconv"
+	"strings"
+
+	"github.com/sirupsen/logrus"
+)
+
+// // Licensed to Elasticsearch B.V. under one or more contributor
 // license agreements. See the NOTICE file distributed with
 // this work for additional information regarding copyright
 // ownership. Elasticsearch B.V. licenses this file to you under
@@ -15,20 +25,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package main
-
-import (
-	"runtime"
-	"strconv"
-	"strings"
-
-	"github.com/sirupsen/logrus"
-)
-
-const (
-	// ecsVersion holds the version of ECS with which the formatter is compatible.
-	ecsVersion = "1.2.0"
-)
+const version = "1.6.0"
 
 var (
 	ecsFieldMap = logrus.FieldMap{
@@ -127,7 +124,7 @@ func (f *OpensearchFormatter) Format(e *logrus.Entry) ([]byte, error) {
 		}
 	}
 
-	data["ecs.version"] = ecsVersion
+	data["ecs.version"] = version
 	ecopy := *e
 	ecopy.Data = data
 	e = &ecopy
