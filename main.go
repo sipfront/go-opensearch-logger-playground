@@ -28,9 +28,11 @@ type OpenSearchWriter struct {
 type LogMessage struct {
 	Timestamp time.Time `json:"@timestamp"`
 	Message   string    `json:"message"`
+	Function  string    `json:"function_name"`
 	Level     string    `json:"level"`
 }
 
+// Write function/method for writting directly to opensearch
 func (ow *OpenSearchWriter) Write(p []byte) (n int, err error) {
 	// pre-processig step for parsing the byte slice
 	//
@@ -38,13 +40,16 @@ func (ow *OpenSearchWriter) Write(p []byte) (n int, err error) {
 	splittedString := strings.SplitAfter(trimmedString, ",")
 
 	// Trims the last entry 'time' of the byte slice p
-	logLevel := strings.SplitAfter(splittedString[0], ":")[1]
-	message := strings.SplitAfter(splittedString[1], ":")[1]
+	function := strings.SplitAfter(splittedString[0], ":")[1]
+	logLevel := strings.SplitAfter(splittedString[1], ":")[1]
+	message := strings.SplitAfter(splittedString[2], ":")[1]
 
-	now := time.Now().UTC()
+	// ------------------------------------------------------------------------
+	// reason for len(...)-2 >> to trim the newline char and the last "
 	logMessage := LogMessage{
-		Timestamp: now,
+		Timestamp: time.Now().UTC(),
 		Message:   message[1 : len(message)-2],
+		Function:  function[1 : len(function)-2],
 		Level:     logLevel[1 : len(logLevel)-2],
 	}
 
@@ -88,7 +93,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Print OpenSearch version information on console.
 	fmt.Println(client.Info())
 
 	// Set Up Logger ----------------------------------------------------------------------------
@@ -101,7 +105,8 @@ func main() {
 		},
 	}
 
-	l.Info("Plonk")
-	l.Info("Blub")
-	l.Error("Skrrt")
+	e := l.WithField("function_name", "main")
+	e.Error("Skrrt")
+	e.Info("Blub")
+	e.Info("Plonk")
 }
