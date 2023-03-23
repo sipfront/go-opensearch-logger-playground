@@ -1,10 +1,6 @@
 package main
 
 import (
-	"runtime"
-	"strconv"
-	"strings"
-
 	"github.com/sirupsen/logrus"
 )
 
@@ -36,12 +32,6 @@ type OpensearchFormatter struct {
 	// DataKey is ignored for well-defined fields, such as "error",
 	// which will instead be stored under the appropriate ECS fields.
 	DataKey string
-
-	// CallerPrettyfier can be set by the user to modify the content
-	// of the function and file keys in the json data when ReportCaller is
-	// activated. If any of the returned value is the empty string the
-	// corresponding key will be removed from json fields.
-	CallerPrettyfier func(*runtime.Frame) (function string, file string)
 
 	// PrettyPrint will indent all json logs
 	PrettyPrint bool
@@ -80,48 +70,12 @@ func (f *OpensearchFormatter) Format(e *logrus.Entry) ([]byte, error) {
 		}
 	}
 
-	if e.HasCaller() {
-		// Logrus has a single configurable field (logrus.FieldKeyFile)
-		// for storing a combined filename and line number, but we want
-		// to split them apart into two fields. Remove the event's Caller
-		// field, and encode the ECS fields explicitly.
-		var funcVal, fileVal string
-		var lineVal int
-		if f.CallerPrettyfier != nil {
-			var fileLineVal string
-			funcVal, fileLineVal = f.CallerPrettyfier(e.Caller)
-			if sep := strings.IndexRune(fileLineVal, ':'); sep != -1 {
-				fileVal = fileLineVal[:sep]
-				lineVal, _ = strconv.Atoi(fileLineVal[sep+1:])
-			} else {
-				fileVal = fileLineVal
-				lineVal = 0
-			}
-		} else {
-			funcVal = e.Caller.Function
-			fileVal = e.Caller.File
-			lineVal = e.Caller.Line
-		}
-		e.Caller = nil
-		if funcVal != "" {
-			data["log.origin.function"] = funcVal
-		}
-		if fileVal != "" {
-			data["log.origin.file.name"] = fileVal
-		}
-		if lineVal > 0 {
-			data["log.origin.file.line"] = lineVal
-		}
-	}
-
-	// data["ecs.version"] = version
 	ecopy := *e
 	ecopy.Data = data
 	e = &ecopy
 
 	jf := logrus.JSONFormatter{
 		DisableHTMLEscape: f.DisableHTMLEscape,
-		CallerPrettyfier:  f.CallerPrettyfier,
 		PrettyPrint:       f.PrettyPrint,
 	}
 	return jf.Format(e)

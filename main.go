@@ -6,17 +6,18 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+
 	"os"
 	"strings"
 	"time"
 
 	"github.com/opensearch-project/opensearch-go/opensearchapi"
-	opensearch "github.com/opensearch-project/opensearch-go/v2"
+	"github.com/opensearch-project/opensearch-go/v2"
 	"github.com/sirupsen/logrus"
 )
 
 // For test purposes
-const IndexName = "sipfront-gotest-v3-2023.03.23"
+// var IndexName = "sipfront-gotest-v3-" + time.Now().UTC().Format("2006-01-02")
 
 // Custom type which will later implement the Write method for logging directly to
 // Opensearch, without the help of using logstash.
@@ -60,7 +61,7 @@ func (ow *OpenSearchWriter) Write(p []byte) (n int, err error) {
 
 	// var document *strings.Reader = strings.NewReader(string(logJson))
 	req := opensearchapi.IndexRequest{
-		Index: IndexName,
+		Index: "sipfront-gotest-v3-" + time.Now().UTC().Format("2006.01.02"),
 		Body:  strings.NewReader(string(logJson)),
 	}
 
@@ -78,7 +79,7 @@ func (ow *OpenSearchWriter) Write(p []byte) (n int, err error) {
 // - https://github.com/elastic/ecs-logging-go-logrus/blob/main/formatter.go or
 // - https://github.com/sirupsen/logrus/issues/719
 func main() {
-	// Initialize the client with SSL/TLS enabled. ----------------------------------------------
+	// Initialize the client with SSL/TLS enabled.
 	var clientConfiguration opensearch.Config = opensearch.Config{
 		Transport: &http.Transport{
 			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
@@ -86,26 +87,26 @@ func main() {
 		Addresses: []string{
 			"https://vpc-sipfront-os-iepreu6yviwjk5rnzetncw7dfm.eu-central-1.es.amazonaws.com"},
 	}
-
 	client, err := opensearch.NewClient(clientConfiguration)
 	if err != nil {
 		fmt.Println("cannot initialize", err)
 		os.Exit(1)
 	}
 
-	fmt.Println(client.Info())
+	// Set Up Logger
+	// var l *logrus.Logger = &logrus.Logger{
+	// 	Out:   &OpenSearchWriter{Client: client},
+	// 	Level: logrus.InfoLevel,
+	// 	Formatter: &OpensearchFormatter{},
+	// }
 
-	// Set Up Logger ----------------------------------------------------------------------------
-	var l *logrus.Logger = &logrus.Logger{
-		Out:   &OpenSearchWriter{Client: client},
-		Level: logrus.InfoLevel,
-		Formatter: &OpensearchFormatter{
-			DisableHTMLEscape: true,
-			PrettyPrint:       false,
-		},
-	}
-
+	var l *logrus.Logger = logrus.New()
 	e := l.WithField("function_name", "main")
+
+	l.SetOutput(&OpenSearchWriter{Client: client})
+	l.SetLevel(logrus.InfoLevel)
+	l.SetFormatter(&OpensearchFormatter{})
+
 	e.Error("Skrrt")
 	e.Info("Blub")
 	e.Info("Plonk")
