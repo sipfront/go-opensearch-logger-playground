@@ -10,24 +10,21 @@ import (
 	"strings"
 	"time"
 
-	opensearchapi "github.com/opensearch-project/opensearch-go/opensearchapi"
+	"github.com/opensearch-project/opensearch-go/opensearchapi"
 	opensearch "github.com/opensearch-project/opensearch-go/v2"
 	"github.com/sirupsen/logrus"
 )
 
-// ------------------------------------------------------------------------------------------------
 // For test purposes
-const IndexName = "sipfront-gotest-v5-2023.03.22"
+const IndexName = "sipfront-gotest-v3-2023.03.23"
 
-// var replacer = strings.NewReplacer("\n", "", " ", "")
-
-// ------------------------------------------------------------------------------------------------
 // Custom type which will later implement the Write method for logging directly to
 // Opensearch, without the help of using logstash.
 type OpenSearchWriter struct {
 	Client *opensearch.Client
 }
 
+// LogMessage describes a simple log message, which is then encoded into a json
 type LogMessage struct {
 	Timestamp time.Time `json:"@timestamp"`
 	Message   string    `json:"message"`
@@ -35,10 +32,20 @@ type LogMessage struct {
 }
 
 func (ow *OpenSearchWriter) Write(p []byte) (n int, err error) {
+	// pre-processig step for parsing the byte slice
+	//
+	trimmedString := strings.Trim(string(p), "{}")
+	splittedString := strings.SplitAfter(trimmedString, ",")
+
+	// Trims the last entry 'time' of the byte slice p
+	logLevel := strings.SplitAfter(splittedString[0], ":")[1]
+	message := strings.SplitAfter(splittedString[1], ":")[1]
+
 	now := time.Now().UTC()
 	logMessage := LogMessage{
 		Timestamp: now,
-		Message:   string(p),
+		Message:   message[1 : len(message)-2],
+		Level:     logLevel[1 : len(logLevel)-2],
 	}
 
 	logJson, err := json.Marshal(logMessage)
@@ -46,16 +53,17 @@ func (ow *OpenSearchWriter) Write(p []byte) (n int, err error) {
 		return 0, err
 	}
 
-	var document *strings.Reader = strings.NewReader(string(logJson))
+	// var document *strings.Reader = strings.NewReader(string(logJson))
 	req := opensearchapi.IndexRequest{
 		Index: IndexName,
-		Body:  document,
+		Body:  strings.NewReader(string(logJson)),
 	}
 
 	insertResponse, err := req.Do(context.Background(), ow.Client)
 	if err != nil {
 		return 0, err
 	}
+	defer insertResponse.Body.Close()
 	fmt.Println(insertResponse)
 
 	return len(p), nil
@@ -89,9 +97,11 @@ func main() {
 		Level: logrus.InfoLevel,
 		Formatter: &OpensearchFormatter{
 			DisableHTMLEscape: true,
-			PrettyPrint:       true,
+			PrettyPrint:       false,
 		},
 	}
+
 	l.Info("Plonk")
 	l.Info("Blub")
+	l.Error("Skrrt")
 }

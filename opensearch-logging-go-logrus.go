@@ -25,16 +25,6 @@ import (
 // specific language governing permissions and limitations
 // under the License.
 
-const version = "1.6.0"
-
-var (
-	ecsFieldMap = logrus.FieldMap{
-		// logrus.FieldKeyTime:  "@timestamp",
-		logrus.FieldKeyMsg:   "message",
-		logrus.FieldKeyLevel: "level",
-	}
-)
-
 // Formatter is a logrus.Formatter, formatting log entries as ECS-compliant JSON.
 type OpensearchFormatter struct {
 	// DisableHTMLEscape allows disabling html escaping in output
@@ -124,17 +114,15 @@ func (f *OpensearchFormatter) Format(e *logrus.Entry) ([]byte, error) {
 		}
 	}
 
-	data["ecs.version"] = version
+	// data["ecs.version"] = version
 	ecopy := *e
 	ecopy.Data = data
 	e = &ecopy
 
 	jf := logrus.JSONFormatter{
-		// TimestampFormat:   "2006-01-02 15:04:05",
 		DisableHTMLEscape: f.DisableHTMLEscape,
-		// FieldMap:          ecsFieldMap,
-		CallerPrettyfier: f.CallerPrettyfier,
-		PrettyPrint:      f.PrettyPrint,
+		CallerPrettyfier:  f.CallerPrettyfier,
+		PrettyPrint:       f.PrettyPrint,
 	}
 	return jf.Format(e)
 }
