@@ -40,10 +40,15 @@ func (ow *OpenSearchWriter) Write(p []byte) (n int, err error) {
 	trimmedString := strings.Trim(string(p), "{}")
 	splittedString := strings.SplitAfter(trimmedString, ",")
 
-	// Trims the last entry 'time' of the byte slice p
+	// Trims the last entry 'time' of the byte slice p. Make sure that
+	// 'function_name' does not contain any ':', otherwise we have the same 
+	// issue with message
 	function := strings.SplitAfter(splittedString[0], ":")[1]
 	logLevel := strings.SplitAfter(splittedString[1], ":")[1]
-	message := strings.SplitAfter(splittedString[2], ":")[1]
+
+	// olves the issues with chopped up messages -> splits the string
+	// in 'message' and the 'rest'
+	message := strings.SplitAfterN(splittedString[2], ":", 2)[1]
 
 	// ------------------------------------------------------------------------
 	// reason for len(...)-2 >> to trim the newline char and the last "
@@ -59,9 +64,8 @@ func (ow *OpenSearchWriter) Write(p []byte) (n int, err error) {
 		return 0, err
 	}
 
-	// var document *strings.Reader = strings.NewReader(string(logJson))
 	req := opensearchapi.IndexRequest{
-		Index: "sipfront-gotest-v3-" + time.Now().UTC().Format("2006.01.02"),
+		Index: "sipfront-gotest-" + time.Now().UTC().Format("2006.01.02"),
 		Body:  strings.NewReader(string(logJson)),
 	}
 
@@ -93,13 +97,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Set Up Logger
-	// var l *logrus.Logger = &logrus.Logger{
-	// 	Out:   &OpenSearchWriter{Client: client},
-	// 	Level: logrus.InfoLevel,
-	// 	Formatter: &OpensearchFormatter{},
-	// }
-
 	var l *logrus.Logger = logrus.New()
 	e := l.WithField("function_name", "main")
 
@@ -107,7 +104,5 @@ func main() {
 	l.SetLevel(logrus.InfoLevel)
 	l.SetFormatter(&OpensearchFormatter{})
 
-	e.Error("Skrrt")
-	e.Info("Blub")
-	e.Info("Plonk")
+	e.Info("stompSource: state= " + "test" + " destination: " + "middle-earth" + " dataText: " + "frodo")
 }
