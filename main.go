@@ -55,15 +55,16 @@ func (ow *OpenSearchWriter) Write(p []byte) (n int, err error) {
 	r := strings.NewReplacer("\\n", "", "\\r", "", "\\t", "", "\"", "", "\\", "")
 	test := r.Replace(message)
 
-	fmt.Println(test[1:strings.LastIndex(test, ",")])
+	// fmt.Println(test[1:strings.LastIndex(test, ",")])
+	fmt.Println(function)
 
 	// ------------------------------------------------------------------------
 	// reason for len(...)-2 >> to trim the newline char and the last "
 	logMessage := LogMessage{
 		Timestamp: time.Now().UTC(),
 		Message:   test[1:strings.LastIndex(test, ",")],
-		Function:  function[1 : len(function)-2],
-		Level:     logLevel[1 : len(logLevel)-2],
+		Function:  function[2 : len(function)-2],
+		Level:     logLevel[2 : len(logLevel)-2],
 	}
 
 	// ------------------------------------------------------------------------
@@ -112,6 +113,7 @@ func main() {
 	l.SetLevel(logrus.InfoLevel)
 	l.SetFormatter(&OpensearchFormatter{PrettyPrint: true})
 
+	// Test 'JSON'
 	test := `{
 		"timestamp": 1679903463.1590829,
 		"currentstatistics": {
@@ -484,5 +486,10 @@ func main() {
 		"sf_mqtt_topic": "dt/agent/1fc17a6b-e932-40fe-91c9-05b8438e1471/d7452484-c88c-11ed-8aad-9cbba9e2c686/18554f0e-cc74-11ed-a694-174ae68c282a/caller/rtp"
 	}`
 
+	// Tests Outputs. Necessary, if the log message is correctly parsed
 	e.Info("stompSource: state= " + "test" + " destination: " + "middle-earth" + " dataText: " + "frodo" + " addInfo: " + test)
+	e.Error("failed to insert into db: " + "this-is-a-test")
+	e.Error("failed to insert into cloki: " + "this-is-a-test")
+	e.Error("failed to unmarshal json '" + test + "': " + "this-is-a-test")
+	e.Error("failed to convert sipp timestamp '" + time.Now().UTC().Format("2006.01.02") + "' to nano timestamp: " + "this-is-a-test")
 }
