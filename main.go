@@ -55,16 +55,18 @@ func (ow *OpenSearchWriter) Write(p []byte) (n int, err error) {
 	r := strings.NewReplacer("\\n", "", "\\r", "", "\\t", "", "\"", "", "\\", "")
 	test := r.Replace(message)
 
+	fmt.Println(test[1:strings.LastIndex(test, ",")])
+
 	// ------------------------------------------------------------------------
 	// reason for len(...)-2 >> to trim the newline char and the last "
 	logMessage := LogMessage{
 		Timestamp: time.Now().UTC(),
-		// We want the last '}', therefore len(message)-1
-		Message:  test[1 : len(test)-1],
-		Function: function[1 : len(function)-2],
-		Level:    logLevel[1 : len(logLevel)-2],
+		Message:   test[1:strings.LastIndex(test, ",")],
+		Function:  function[1 : len(function)-2],
+		Level:     logLevel[1 : len(logLevel)-2],
 	}
 
+	// ------------------------------------------------------------------------
 	logJson, err := json.Marshal(logMessage)
 	if err != nil {
 		return 0, err
