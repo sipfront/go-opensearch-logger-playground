@@ -16,9 +16,6 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// For test purposes
-// var IndexName = "sipfront-gotest-v3-" + time.Now().UTC().Format("2006-01-02")
-
 // Custom type which will later implement the Write method for logging directly to
 // Opensearch, without the help of using logstash.
 type OpenSearchWriter struct {
@@ -36,44 +33,49 @@ type LogMessage struct {
 // Write function/method for writting directly to opensearch
 func (ow *OpenSearchWriter) Write(p []byte) (n int, err error) {
 	// pre-processig step for parsing the byte slice
-	//
+	// Trims {left brace and }right brace
 	trimmedString := strings.Trim(string(p), "{}")
 
-	// Solves the issue of chopped up messages -> json contains
+	// Solves the issue of chopped up messages. From https://www.json.org/json-en.html
+	// An object is an unordered set of name/value pairs. 
+	// An object begins with {left brace and ends with }right brace. 
+	// Each name is followed by :colon and the name/value pairs are separated by ,comma.
+	// 
+	// Because the byte slice provided can contain a string formatted as a json,
+	// splitting after each ,comma would lead to a chopped up message. Therefore we split
+	// the string into three parts.
+	//
+	// But: The entry 'time' of the byte slice p is now included and actually not needed. 
 	splittedString := strings.SplitAfterN(trimmedString, ",", 3)
 
-	// Trims the last entry 'time' of the byte slice p. Make sure that
 	// 'function_name' does not contain any ':', otherwise we have the same
-	// issue with message
+	// issue as with message
 	function := strings.SplitAfter(splittedString[0], ":")[1]
 	logLevel := strings.SplitAfter(splittedString[1], ":")[1]
 
 	// Solves the issues with chopped up messages -> splits the string
 	// in 'message' and the 'rest'
-	message := strings.SplitAfterN(splittedString[2], ":", 2)[1]
-
 	r := strings.NewReplacer("\\n", "", "\\r", "", "\\t", "", "\"", "", "\\", "")
-	test := r.Replace(message)
-
-	// fmt.Println(test[1:strings.LastIndex(test, ",")])
-	fmt.Println(function)
+	message := strings.SplitAfterN(splittedString[2], ":", 2)[1]
+	messageCleaned := r.Replace(message)
 
 	// ------------------------------------------------------------------------
-	// reason for len(...)-2 >> to trim the newline char and the last "
+	// reason for len(...)-2 >> to trim the newline char and the last "double 
+	// quote character
 	logMessage := LogMessage{
-		Timestamp: time.Now().UTC(),
-		Message:   test[1:strings.LastIndex(test, ",")],
+		Timestamp: time.Now().UTC(),\
+		// We're looking for the last ,colon and slice the string from index 1 to
+		// the position where it is encountered
+		Message:   messageCleaned[1:strings.LastIndex(messageCleaned, ",")],
 		Function:  function[2 : len(function)-2],
 		Level:     logLevel[2 : len(logLevel)-2],
 	}
 
-	// ------------------------------------------------------------------------
 	logJson, err := json.Marshal(logMessage)
 	if err != nil {
 		return 0, err
 	}
 
-	// ------------------------------------------------------------------------
 	req := opensearchapi.IndexRequest{
 		Index: "sipfront-gotest-" + time.Now().UTC().Format("2006.01.02"),
 		Body:  strings.NewReader(string(logJson)),
