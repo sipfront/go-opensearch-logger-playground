@@ -63,7 +63,7 @@ func (ow *OpenSearchWriter) Write(p []byte) (n int, err error) {
 	// reason for len(...)-2 >> to trim the newline char and the last "double 
 	// quote character
 	logMessage := LogMessage{
-		Timestamp: time.Now().UTC(),\
+		Timestamp: time.Now().UTC(),
 		// We're looking for the last ,colon and slice the string from index 1 to
 		// the position where it is encountered
 		Message:   messageCleaned[1:strings.LastIndex(messageCleaned, ",")],
