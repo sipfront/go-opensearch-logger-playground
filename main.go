@@ -16,18 +16,18 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// Custom type which will later implement the Write method for logging directly to
-// Opensearch, without the help of using logstash.
-type OpenSearchWriter struct {
-	Client *opensearch.Client
-}
-
 // LogMessage describes a simple log message, which is then encoded into a json
 type LogMessage struct {
 	Timestamp time.Time `json:"@timestamp"`
 	Message   string    `json:"message"`
 	Function  string    `json:"function_name"`
 	Level     string    `json:"level"`
+}
+
+// Custom type that will later implement the Write method/interface for logging directly to
+// Opensearch, without the help of using logstash.
+type OpenSearchWriter struct {
+	Client *opensearch.Client
 }
 
 // Write function/method for writting directly to opensearch
