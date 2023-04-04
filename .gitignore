@@ -23,3 +23,5 @@ go.work
 # Go sum and mod
 go.sum
 go.mod
+
+deprecated-code
