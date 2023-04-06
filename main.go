@@ -81,7 +81,7 @@ func (ow *OpenSearchWriter) Write(p []byte) (n int, err error) {
 	}
 
 	req := opensearchapi.IndexRequest{
-		Index: "sipfront-gotest-" + time.Now().UTC().Format("2006.01.02"),
+		Index: "testindex-" + time.Now().UTC().Format("2006.01.02"),
 		Body:  strings.NewReader(string(logJson)),
 	}
 	insertResponse, err := req.Do(context.Background(), ow.Client)
