@@ -50,7 +50,7 @@ func (ow *OpenSearchWriter) Write(p []byte) (n int, err error) {
 	// the string into three parts.
 	//
 	// But: The entry 'time' of the byte slice p is now included and actually not needed.
-	// To drop it, we need to handle it in some way. For that see line 72-74
+	// To drop it, we need to handle it in some way. For that see line 71-73
 	splittedString := strings.SplitAfterN(trimmedString, ",", 3)
 
 	// 'function_name' does not contain any ':', otherwise we have the same
