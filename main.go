@@ -24,13 +24,17 @@ type LogMessage struct {
 	Level     string    `json:"level"`
 }
 
-// Custom type that will later implement the Write method/interface for logging directly to
-// Opensearch, without the help of using logstash.
+// Custom type that will later implement the Write method/interface for logging 
+// directly to Opensearch, without the help of using logstash.
 type OpenSearchWriter struct {
 	Client *opensearch.Client
 }
 
-// Write function/method for writting directly to opensearch
+// Write function/method for writting directly to opensearch\
+// For mor information, see:
+//
+// - https://github.com/elastic/ecs-logging-go-logrus/blob/main/formatter.go or
+// - https://github.com/sirupsen/logrus/issues/719
 func (ow *OpenSearchWriter) Write(p []byte) (n int, err error) {
 	// pre-processig step for parsing the byte slice
 	// Trims {left brace and }right brace
@@ -45,7 +49,8 @@ func (ow *OpenSearchWriter) Write(p []byte) (n int, err error) {
 	// splitting after each ,comma would lead to a chopped up message. Therefore we split
 	// the string into three parts.
 	//
-	// But: The entry 'time' of the byte slice p is now included and actually not needed. 
+	// But: The entry 'time' of the byte slice p is now included and actually not needed.
+	// To drop it, we need to handle it in some way. For that see line 72-74
 	splittedString := strings.SplitAfterN(trimmedString, ",", 3)
 
 	// 'function_name' does not contain any ':', otherwise we have the same
@@ -90,11 +95,7 @@ func (ow *OpenSearchWriter) Write(p []byte) (n int, err error) {
 	return len(p), nil
 }
 
-// TODO Write a custom formater, such that the log is ESC compliant, see:
-// - https://github.com/elastic/ecs-logging-go-logrus/blob/main/formatter.go or
-// - https://github.com/sirupsen/logrus/issues/719
 func main() {
-	// Initialize the client with SSL/TLS enabled.
 	var clientConfiguration opensearch.Config = opensearch.Config{
 		Transport: &http.Transport{
 			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
@@ -115,6 +116,5 @@ func main() {
 	l.SetLevel(logrus.InfoLevel)
 	l.SetFormatter(&OpensearchFormatter{PrettyPrint: true})
 
-	// Test 'JSON'
 	e.Info("this-is-a-test")
 }
