@@ -16,6 +16,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+//-------------------------------------------------------------------------------------------------
 // LogMessage describes a simple log message, which is then encoded into a json
 type LogMessage struct {
 	Timestamp time.Time `json:"@timestamp"`
@@ -24,12 +25,14 @@ type LogMessage struct {
 	Level     string    `json:"level"`
 }
 
+//-------------------------------------------------------------------------------------------------
 // Custom type that will later implement the Write method/interface for logging 
 // directly to Opensearch, without the help of using logstash.
 type OpenSearchWriter struct {
 	Client *opensearch.Client
 }
 
+//-------------------------------------------------------------------------------------------------
 // Write function/method for writting directly to opensearch\
 // For mor information, see:
 //
@@ -38,7 +41,7 @@ type OpenSearchWriter struct {
 func (ow *OpenSearchWriter) Write(p []byte) (n int, err error) {
 	// pre-processig step for parsing the byte slice
 	// Trims {left brace and }right brace
-	trimmedString := strings.Trim(string(p), "{}")
+	trimmedString := strings.Trim(string(p), "{")
 
 	// Solves the issue of chopped up messages. From https://www.json.org/json-en.html
 	// An object is an unordered set of name/value pairs. 
@@ -81,7 +84,7 @@ func (ow *OpenSearchWriter) Write(p []byte) (n int, err error) {
 	}
 
 	req := opensearchapi.IndexRequest{
-		Index: "testindex-" + time.Now().UTC().Format("2006.01.02"),
+		Index: "sipfront-gotest-" + time.Now().UTC().Format("2006.01.02"),
 		Body:  strings.NewReader(string(logJson)),
 	}
 	insertResponse, err := req.Do(context.Background(), ow.Client)
@@ -94,13 +97,14 @@ func (ow *OpenSearchWriter) Write(p []byte) (n int, err error) {
 	return len(p), nil
 }
 
+//-------------------------------------------------------------------------------------------------
 func main() {
 	var clientConfiguration opensearch.Config = opensearch.Config{
 		Transport: &http.Transport{
 			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 		},
 		Addresses: []string{
-			"adress-url-to-your-opensearch-server"},
+			"https://vpc-sipfront-os-iepreu6yviwjk5rnzetncw7dfm.eu-central-1.es.amazonaws.com"},
 	}
 	client, err := opensearch.NewClient(clientConfiguration)
 	if err != nil {
@@ -109,11 +113,21 @@ func main() {
 	}
 
 	var l *logrus.Logger = logrus.New()
-	e := l.WithField("function_name", "main")
-
 	l.SetOutput(&OpenSearchWriter{Client: client})
 	l.SetLevel(logrus.InfoLevel)
-	l.SetFormatter(&OpensearchFormatter{PrettyPrint: true})
+	l.SetFormatter(&OpensearchFormatter{PrettyPrint: false})
+
+	e := l.WithFields(
+		logrus.Fields{"function_name": "main"},
+	)
+
+	e = e.WithFields(
+		logrus.Fields{"extra_field_1": "extra_value_1"},
+	)
+
+	e = e.WithFields(
+		logrus.Fields{"extra_field_2": "extra_value_2"},
+	)
 
 	e.Info("this-is-a-test")
 }
