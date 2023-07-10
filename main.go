@@ -10,7 +10,7 @@ import (
 
 	"os"
 	"time"
-	"reflect"
+	//"reflect"
 
 	"github.com/opensearch-project/opensearch-go/opensearchapi"
 	"github.com/opensearch-project/opensearch-go/v2"
@@ -56,7 +56,6 @@ func (ow *OpenSearchWriter) Write(p []byte) (n int, err error) {
 		fmt.Printf("[ERROR]: %s\n", err)
 		return 0, err
 	}
-	fmt.Println(reflect.TypeOf(logJson), string(logJson))
 
 	req := opensearchapi.IndexRequest{
 		Index: "sipfront-gotest-" + time.Now().UTC().Format("2006.01.02"),
