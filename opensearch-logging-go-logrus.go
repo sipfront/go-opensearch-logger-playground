@@ -74,7 +74,12 @@ func (f *OpensearchFormatter) Format(e *logrus.Entry) ([]byte, error) {
 	ecopy.Data = data
 	e = &ecopy
 
+	// https://stackoverflow.com/questions/63396766/is-it-possible-to-swap-msg-for-message-with-logrus-logging
 	jf := logrus.JSONFormatter{
+		FieldMap: logrus.FieldMap{
+			logrus.FieldKeyMsg: "message", 
+			logrus.FieldKeyTime: "@timestamp",
+		},
 		DisableHTMLEscape: f.DisableHTMLEscape,
 		PrettyPrint:       f.PrettyPrint,
 	}
