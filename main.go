@@ -10,7 +10,6 @@ import (
 
 	"os"
 	"time"
-	//"reflect"
 
 	"github.com/opensearch-project/opensearch-go/opensearchapi"
 	"github.com/opensearch-project/opensearch-go/v2"
@@ -24,7 +23,7 @@ type LogMessage struct {
 	Level        	string    	`json:"level"`
 	Message      	string    	`json:"message"`
 	Timestamp    	time.Time	`json:"@timestamp"`
-	AwsRequestId 	string    	`json:"extra_field1,omitempty"`
+	AwsRequestId 	string    	`json:"aws_request_id,omitempty"`
 	CustomerId   	string	   	`json:"customer_id,omitempty"`
 	SessionId    	string    	`json:"session_id,omitempty"`
 	UserId    		string    	`json:"user_id,omitempty"`
@@ -71,20 +70,6 @@ func (ow *OpenSearchWriter) Write(p []byte) (n int, err error) {
 	defer insertResponse.Body.Close()
 	fmt.Println(insertResponse)
 
-//  var data map[string]interface{}
-//	timeStamp, err := time.Parse(time.RFC3339, data["time"].(string))
-//	if err != nil {
-//		fmt.Printf("[ERROR]: %s\n", err)
-//		return 0, err
-//    }
-//	fmt.Println(reflect.TypeOf(timeStamp), "->" ,timeStamp)
-//
-//	message := data["msg"].(string)
-//	fmt.Println(reflect.TypeOf(message), "->", message)
-//
-//	extra := data["extra_field1"].(string)
-//	fmt.Println(reflect.TypeOf(extra), "->", extra)
-
 	return len(p), nil
 }
 
@@ -113,7 +98,7 @@ func main() {
 	)
 
 	e = e.WithFields(
-		logrus.Fields{"extra_field1": "1"},
+		logrus.Fields{"aws_request_id": "1"},
 	)
 
 	e.Info("this-is-a-test")
