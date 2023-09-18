@@ -49,6 +49,7 @@ func (ow *OpenSearchWriter) Write(p []byte) (n int, err error) {
 		fmt.Printf("[ERROR]: %s\n", err)
 		return 0, err
     }
+
 	log.Timestamp = log.Timestamp.UTC()
 	logJson, err := json.Marshal(log)
 	if err != nil {
