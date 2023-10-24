@@ -2,18 +2,18 @@ package main
 
 import (
 	"context"
-	"crypto/tls"
+	// "crypto/tls"
 	"encoding/json"
 	"fmt"
-	"net/http"
+	// "net/http"
 	"strings"
 
-	"os"
+	// "os"
 	"time"
 
 	"github.com/opensearch-project/opensearch-go/opensearchapi"
 	"github.com/opensearch-project/opensearch-go/v2"
-	"github.com/sirupsen/logrus"
+	// "github.com/sirupsen/logrus"
 )
 
 //-------------------------------------------------------------------------------------------------
@@ -28,9 +28,10 @@ type SF_LogMessage struct {
 const (
 	SF_LogLevel_Info SF_LogLevel = iota
 	SF_LogLevel_Error
+	SF_LogLevel_Warn
 )
 
-var logc chan SF_LogMessage
+var logc chan SF_LogMessage = make(chan SF_LogMessage, 10)
 
 
 //-------------------------------------------------------------------------------------------------
@@ -39,82 +40,28 @@ func log_info(aws_request_id, message string) {
 		AwsRequestId: 	aws_request_id,
 		LogLevel: 		SF_LogLevel_Info,
 		Message: 		message,
-		Timestamp: 		time.Now.UTC(),
+		Timestamp: 		time.Now().UTC(),
 	}
 }
 
 //-------------------------------------------------------------------------------------------------
-func log_error(message string) {
+func log_error(aws_request_id, message string) {
 	logc <- SF_LogMessage{
 		AwsRequestId: 	aws_request_id,
 		LogLevel: 		SF_LogLevel_Error,
 		Message: 		message,
-		Timestamp: 		time.Now.UTC(),
+		Timestamp: 		time.Now().UTC(),
 	}
 }
 
 //-------------------------------------------------------------------------------------------------
-func logSink(
-	ctx context.Context,
-	function_name string,
-	aws_request_id string,
-	in <-chan SF_LogMessage) (<-chan error, error) {
-
-	errc := make(chan error, 1)
-	go func() {
-		defer close(errc)
-
-		// create logger!
-		var go_logger_client *logrus.Logger = nil
-		var go_logger *logrus.Entry = nil
-
-		if go_logger_client == nil {
-			go_logger_client = logrus.New()
-			fields := logrus.Fields{
-				"function_name":  function_name,
-				"aws_request_id": aws_request_id,
-			}
-			go_logger = go_logger_client.WithFields(fields)
-
-			// Set Up OpenSearch Client and initialize with SSL/TLS enabled.
-			var clientConfiguration opensearch.Config = opensearch.Config{
-				Transport: &http.Transport{
-					TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-				},
-				Addresses: []string{
-					es_endpoint},
-			}
-			client, err := opensearch.NewClient(clientConfiguration)
-			if err != nil {
-				println("init logging failed")
-				panic("init logging failed")
-			} else {
-				// Set Up logger with non-default params
-				// logger_client.SetOutput(&OpenSearchWriter{Client: client})
-				logger_client.SetFormatter(&OpensearchFormatter{})
-				logger_client.SetLevel(logrus.InfoLevel)
-			}
-		}
-
-		for {
-			select {
-			case s := <-in:
-				switch level := s.LogLevel; level {
-				case SF_LogLevel_Info:
-					//log info
-					//log_info("logSink: " + s.Message)
-					go_logger.Info("logSink: " + s.Message)
-				case SF_LogLevel_Error:
-					//log error
-					//logger.Info("logSink: " + s.Message)
-					go_logger.Error("logSink: " + s.Message)
-				}
-			case <-ctx.Done():
-				return
-			}
-		}
-	}()
-	return errc, nil
+func log_warn(aws_request_id, message string) {
+	logc <- SF_LogMessage{
+		AwsRequestId: 	aws_request_id,
+		LogLevel: 		SF_LogLevel_Warn,
+		Message: 		message,
+		Timestamp: 		time.Now().UTC(),
+	}
 }
 
 
@@ -178,31 +125,48 @@ func (ow *OpenSearchWriter) Write(p []byte) (n int, err error) {
 
 //-------------------------------------------------------------------------------------------------
 func main() {
-	var clientConfiguration opensearch.Config = opensearch.Config{
-		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-		},
-		Addresses: []string{
-			"https://vpc-sipfront-os-iepreu6yviwjk5rnzetncw7dfm.eu-central-1.es.amazonaws.com"},
+	// var clientConfiguration opensearch.Config = opensearch.Config{
+	// 	Transport: &http.Transport{
+	// 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	// 	},
+	// 	Addresses: []string{
+	// 		"https://vpc-sipfront-os-iepreu6yviwjk5rnzetncw7dfm.eu-central-1.es.amazonaws.com"},
+	// }
+	// client, err := opensearch.NewClient(clientConfiguration)
+	// if err != nil {
+	// 	fmt.Println("cannot initialize", err)
+	// 	os.Exit(1)
+	// }
+	// var l *logrus.Logger = logrus.New()
+	// l.SetOutput(&OpenSearchWriter{Client: client})
+	// l.SetFormatter(&OpensearchFormatter{PrettyPrint: false})
+	//l.SetLevel(logrus.InfoLevel)
+	// e := l.WithFields(
+	// 	logrus.Fields{"function_name": "main"},
+	// )
+	// e = e.WithFields(
+	//  	logrus.Fields{"aws_request_id": "1"},
+	// )
+
+	// https://github.com/Sirupsen/logrus/issues/338
+	log_info("101", "this-is-a-test")
+	log_error("201", "this-is-another-test")
+
+	test := ``
+
+	close(logc)
+	s := " "
+	for i := range logc {
+		log, err := json.Marshal(i)
+		if err != nil {
+			fmt.Printf("[ERROR]: %s\n", err)
+		}
+
+		index := "sipfront-gotest-" + time.Now().Format("2006.01.02")
+		test += fmt.Sprintf(`{"index" : { "_index" : %s, "_id" : "1" }}`, index)+"\n"
+		s = string(log)+"\n"
+		test += s
 	}
-	client, err := opensearch.NewClient(clientConfiguration)
-	if err != nil {
-		fmt.Println("cannot initialize", err)
-		os.Exit(1)
-	}
 
-	var l *logrus.Logger = logrus.New()
-	l.SetOutput(&OpenSearchWriter{Client: client})
-	l.SetLevel(logrus.InfoLevel)
-	l.SetFormatter(&OpensearchFormatter{PrettyPrint: false})
-
-	e := l.WithFields(
-		logrus.Fields{"function_name": "main"},
-	)
-
-	e = e.WithFields(
-		logrus.Fields{"aws_request_id": "1"},
-	)
-
-	e.Info("this-is-a-test")
+	print(test)
 }
