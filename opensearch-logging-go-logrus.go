@@ -78,7 +78,7 @@ func (f *OpensearchFormatter) Format(e *logrus.Entry) ([]byte, error) {
 	jf := logrus.JSONFormatter{
 		TimestampFormat: "2006-01-02T15:04:05.999999999Z07:00",
 		FieldMap: logrus.FieldMap{
-			logrus.FieldKeyMsg: "message", 
+			logrus.FieldKeyMsg: "message",
 			logrus.FieldKeyTime: "@timestamp",
 		},
 		DisableHTMLEscape: f.DisableHTMLEscape,
