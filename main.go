@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"strconv"
 
 	"os"
 	"time"
@@ -32,7 +33,7 @@ const (
 	SF_LogLevel_Warn
 )
 
-var logc chan SF_LogMessage = make(chan SF_LogMessage, 10)
+var logc chan SF_LogMessage = make(chan SF_LogMessage, 100)
 
 
 //-------------------------------------------------------------------------------------------------
@@ -67,7 +68,6 @@ func log_warn(aws_request_id, message string) {
 		Timestamp: 		time.Now().UTC(),
 	}
 }
-
 
 //-------------------------------------------------------------------------------------------------
 // LogMessage describes a simple log message, which is then encoded into a json
@@ -128,7 +128,7 @@ func (ow *OpenSearchWriter) Write(p []byte) (n int, err error) {
 }
 
 //-------------------------------------------------------------------------------------------------
-func main() {
+func BulkOperation(logc chan  SF_LogMessage) {
 	var clientConfiguration opensearch.Config = opensearch.Config{
 		Transport: &http.Transport{
 			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
@@ -144,6 +144,43 @@ func main() {
 		os.Exit(1)
 	}
 
+
+	test := ``
+	close(logc)
+	s := " "
+	for i := range logc {
+		log, err := json.Marshal(i)
+		if err != nil {
+			fmt.Printf("[ERROR]: %s\n", err)
+		}
+
+		index := "sipfront-playground-" + time.Now().Format("2006.01.02")
+		// test += fmt.Sprintf(`{"index" : { "_index" : %s, "_id" : "1" }}`, index)+"\n"
+		test += fmt.Sprintf(`{"index" : { "_index" : "%s" }}`, index)+"\n"
+		s = string(log)+"\n"
+		test += s
+	}
+
+	res, err := client.Bulk(strings.NewReader(test))
+	fmt.Println(res, err)
+}
+
+//-------------------------------------------------------------------------------------------------
+func main() {
+	var clientConfiguration opensearch.Config = opensearch.Config{
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		},
+		Addresses: []string{
+		//	"https://vpc-sipfront-os-iepreu6yviwjk5rnzetncw7dfm.eu-central-1.es.amazonaws.com", // dev
+			"https://vpc-sipfront-os-fgqfem5p72z6mzvlm542j43uvy.eu-central-1.es.amazonaws.com",	// prod
+		},
+	}
+	client, err := opensearch.NewClient(clientConfiguration)
+	if err != nil {
+		fmt.Println("cannot initialize", err)
+		os.Exit(1)
+	}
 	// var l *logrus.Logger = logrus.New()
 	// l.SetOutput(&OpenSearchWriter{Client: client})
 	// l.SetFormatter(&OpensearchFormatter{PrettyPrint: false})
@@ -156,28 +193,40 @@ func main() {
 	// )
 
 	// https://github.com/Sirupsen/logrus/issues/338
-	log_info("101", "this-is-a-test")
-	log_error("201", "this-is-another-test")
+	N := 10
+	for i := 0; i < N; i ++ {
+		log_info(strconv.Itoa(i), fmt.Sprintf("Iteration number %d\n", i))
+	}
 
 	test := ``
-
 	close(logc)
 	s := " "
+	t0_json := time.Now()
 	for i := range logc {
 		log, err := json.Marshal(i)
+
+
 		if err != nil {
 			fmt.Printf("[ERROR]: %s\n", err)
 		}
-
 		index := "sipfront-playground-" + time.Now().Format("2006.01.02")
-		// test += fmt.Sprintf(`{"index" : { "_index" : %s, "_id" : "1" }}`, index)+"\n"
-		test += fmt.Sprintf(`{"index" : { "_index" : %s }}`, index)+"\n"
+		test += fmt.Sprintf(`{"index" : { "_index" : "%s" }}`, index)+"\n"
 		s = string(log)+"\n"
 		test += s
 	}
+	t1_json := time.Now()
+	ms_json := float64(t1_json.Sub(t0_json) / time.Millisecond)
 
-	print(test)
 
+	t0_bulk := time.Now()
 	res, err := client.Bulk(strings.NewReader(test))
-	fmt.Println(res, err)
+	t1_bulk := time.Now()
+	ms_bulk := float64(t1_bulk.Sub(t0_bulk) / time.Millisecond)
+
+	if err != nil {
+		fmt.Println(res, err)
+	}
+
+	fmt.Printf("Json Encoding for %d elements took %.2f ms to run.\n", N, ms_bulk)
+	fmt.Printf("Bulk Operation for %d elements took %.2f ms to run.\n", N, ms_json)
 }
