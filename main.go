@@ -2,13 +2,13 @@ package main
 
 import (
 	"context"
-	// "crypto/tls"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
-	// "net/http"
+	"net/http"
 	"strings"
 
-	// "os"
+	"os"
 	"time"
 
 	"github.com/opensearch-project/opensearch-go/opensearchapi"
@@ -20,8 +20,9 @@ import (
 type SF_LogLevel int64
 type SF_LogMessage struct {
 	AwsRequestId 	string    		`json:"aws_request_id,omitempty"`
-	Message  		string			`json:"message"`
+	Function     	string    		`json:"function_name"`
 	LogLevel 		SF_LogLevel		`json:"level"`
+	Message  		string			`json:"message"`
 	Timestamp    	time.Time		`json:"@timestamp"`
 }
 
@@ -38,6 +39,7 @@ var logc chan SF_LogMessage = make(chan SF_LogMessage, 10)
 func log_info(aws_request_id, message string) {
 	logc <- SF_LogMessage{
 		AwsRequestId: 	aws_request_id,
+		Function: 		"test-function",
 		LogLevel: 		SF_LogLevel_Info,
 		Message: 		message,
 		Timestamp: 		time.Now().UTC(),
@@ -48,6 +50,7 @@ func log_info(aws_request_id, message string) {
 func log_error(aws_request_id, message string) {
 	logc <- SF_LogMessage{
 		AwsRequestId: 	aws_request_id,
+		Function: 		"test-function",
 		LogLevel: 		SF_LogLevel_Error,
 		Message: 		message,
 		Timestamp: 		time.Now().UTC(),
@@ -58,6 +61,7 @@ func log_error(aws_request_id, message string) {
 func log_warn(aws_request_id, message string) {
 	logc <- SF_LogMessage{
 		AwsRequestId: 	aws_request_id,
+		Function: 		"test-function",
 		LogLevel: 		SF_LogLevel_Warn,
 		Message: 		message,
 		Timestamp: 		time.Now().UTC(),
@@ -125,22 +129,25 @@ func (ow *OpenSearchWriter) Write(p []byte) (n int, err error) {
 
 //-------------------------------------------------------------------------------------------------
 func main() {
-	// var clientConfiguration opensearch.Config = opensearch.Config{
-	// 	Transport: &http.Transport{
-	// 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-	// 	},
-	// 	Addresses: []string{
-	// 		"https://vpc-sipfront-os-iepreu6yviwjk5rnzetncw7dfm.eu-central-1.es.amazonaws.com"},
-	// }
-	// client, err := opensearch.NewClient(clientConfiguration)
-	// if err != nil {
-	// 	fmt.Println("cannot initialize", err)
-	// 	os.Exit(1)
-	// }
+	var clientConfiguration opensearch.Config = opensearch.Config{
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		},
+		Addresses: []string{
+		//	"https://vpc-sipfront-os-iepreu6yviwjk5rnzetncw7dfm.eu-central-1.es.amazonaws.com", // dev
+			"https://vpc-sipfront-os-fgqfem5p72z6mzvlm542j43uvy.eu-central-1.es.amazonaws.com",	// prod
+		},
+	}
+	client, err := opensearch.NewClient(clientConfiguration)
+	if err != nil {
+		fmt.Println("cannot initialize", err)
+		os.Exit(1)
+	}
+
 	// var l *logrus.Logger = logrus.New()
 	// l.SetOutput(&OpenSearchWriter{Client: client})
 	// l.SetFormatter(&OpensearchFormatter{PrettyPrint: false})
-	//l.SetLevel(logrus.InfoLevel)
+	// l.SetLevel(logrus.InfoLevel)
 	// e := l.WithFields(
 	// 	logrus.Fields{"function_name": "main"},
 	// )
@@ -162,11 +169,15 @@ func main() {
 			fmt.Printf("[ERROR]: %s\n", err)
 		}
 
-		index := "sipfront-gotest-" + time.Now().Format("2006.01.02")
-		test += fmt.Sprintf(`{"index" : { "_index" : %s, "_id" : "1" }}`, index)+"\n"
+		index := "sipfront-playground-" + time.Now().Format("2006.01.02")
+		// test += fmt.Sprintf(`{"index" : { "_index" : %s, "_id" : "1" }}`, index)+"\n"
+		test += fmt.Sprintf(`{"index" : { "_index" : %s }}`, index)+"\n"
 		s = string(log)+"\n"
 		test += s
 	}
 
 	print(test)
+
+	res, err := client.Bulk(strings.NewReader(test))
+	fmt.Println(res, err)
 }
