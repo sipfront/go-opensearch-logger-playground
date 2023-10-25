@@ -215,8 +215,8 @@ func main() {
 		// message 		:= i.Message
 		// timestamp		:= i.Timestamp
 
-		// index := "sipfront-playground-" + time.Now().Format("2006.01.02")
-		// test += fmt.Sprintf(`{"index" : { "_index" : "%s" }}`, index)+"\n"
+		index := "sipfront-playground-" + time.Now().Format("2006.01.02")
+		test += fmt.Sprintf(`{"index" : { "_index" : "%s" }}`, index)+"\n"
 		s = string(log)+"\n"
 		// s = fmt.Sprintf(
 		// 	`{aws_request_id":"%s","function_name":"%s","level":%d,"message":"%s","@timestamp":"%s"}`,
