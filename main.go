@@ -209,19 +209,9 @@ func main() {
 			fmt.Printf("[ERROR]: %s\n", err)
 		}
 
-		// aws_request_id 	:= i.AwsRequestId
-		// function 		:= i.Function
-		// level 			:= i.LogLevel
-		// message 		:= i.Message
-		// timestamp		:= i.Timestamp
-
 		index := "sipfront-playground-" + time.Now().Format("2006.01.02")
 		test += fmt.Sprintf(`{"index" : { "_index" : "%s" }}`, index)+"\n"
 		s = string(log)+"\n"
-		// s = fmt.Sprintf(
-		// 	`{aws_request_id":"%s","function_name":"%s","level":%d,"message":"%s","@timestamp":"%s"}`,
-		// 	aws_request_id, function, level, message, timestamp,
-		// ) + "\n"
 		test += s
 	}
 	t1_json := time.Now()
