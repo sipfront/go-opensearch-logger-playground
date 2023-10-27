@@ -227,18 +227,4 @@ func main() {
 	fmt.Printf("Bulk Operation for %d elements took %.2f ms to run.\n", N, ms_bulk)
 	fmt.Printf("Json Encoding for %d elements took %.2f ms to run.\n", N, ms_json)
 
-	// req := opensearchapi.BulkRequest{
-	// 	Index: "sipfront-playground-" + time.Now().Format("2006.01.02"),
-	// 	Body:  strings.NewReader(test),
-	// }
-	// t0_bulk := time.Now()
-	// insertResponse, err := req.Do(context.Background(), client)
-	// if err != nil {
-	// 	fmt.Printf("[ERROR]: %s\nResponseBody: %s\n", err, insertResponse)
-	// }
-	// defer insertResponse.Body.Close()
-	// fmt.Println(insertResponse)
-	// t1_bulk := time.Now()
-	// ms_bulk := float64(t1_bulk.Sub(t0_bulk) / time.Millisecond)
-	// fmt.Printf("Bulk Operation for %d elements took %.2f ms to run.\n", N, ms_bulk)
 }
