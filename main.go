@@ -182,17 +182,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	// var l *logrus.Logger = logrus.New()
-	// l.SetOutput(&OpenSearchWriter{Client: client})
-	// l.SetFormatter(&OpensearchFormatter{PrettyPrint: false})
-	// l.SetLevel(logrus.InfoLevel)
-	// e := l.WithFields(
-	// 	logrus.Fields{"function_name": "main"},
-	// )
-	// e = e.WithFields(
-	//  	logrus.Fields{"aws_request_id": "1"},
-	// )
-
 	// https://github.com/Sirupsen/logrus/issues/338
 	N := 5
 	for i := 0; i < N; i ++ {
@@ -220,16 +209,9 @@ func main() {
 
 	fmt.Println(test)
 
-	// t1_json := time.Now()
-	// ms_json := float64(t1_json.Sub(t0_json) / time.Millisecond)
-	// t0_bulk := time.Now()
-	res, err := client.Bulk(strings.NewReader(test))
-	// t1_bulk := time.Now()
-	// ms_bulk := float64(t1_bulk.Sub(t0_bulk) / time.Millisecond)
-	if err != nil {
-		fmt.Println(res, err)
-	}
-	// fmt.Printf("Bulk Operation for %d elements took %.2f ms to run.\n", N, ms_bulk)
-	// fmt.Printf("Json Encoding for %d elements took %.2f ms to run.\n", N, ms_json)
 
+	_, err := client.Bulk(strings.NewReader(test))
+	if err != nil {
+		fmt.Println(err)
+	}
 }
