@@ -43,7 +43,7 @@ func log_info(aws_request_id, message string) {
 		Function: 		"test-function",
 		LogLevel: 		SF_LogLevel_Info,
 		Message: 		message,
-		Timestamp: 		time.Now().UTC(),
+		Timestamp: 		time.Now().Add(time.Duration(-5) * time.Hour).UTC(),
 	}
 }
 
@@ -172,8 +172,8 @@ func main() {
 			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 		},
 		Addresses: []string{
-		//	"https://vpc-sipfront-os-iepreu6yviwjk5rnzetncw7dfm.eu-central-1.es.amazonaws.com", // dev
-			"https://vpc-sipfront-os-fgqfem5p72z6mzvlm542j43uvy.eu-central-1.es.amazonaws.com",	// prod
+			"https://vpc-sipfront-os-iepreu6yviwjk5rnzetncw7dfm.eu-central-1.es.amazonaws.com", // dev
+			// "https://vpc-sipfront-os-fgqfem5p72z6mzvlm542j43uvy.eu-central-1.es.amazonaws.com",	// prod
 		},
 	}
 	client, err := opensearch.NewClient(clientConfiguration)
@@ -194,15 +194,18 @@ func main() {
 	// )
 
 	// https://github.com/Sirupsen/logrus/issues/338
-	N := 10
+	N := 5
 	for i := 0; i < N; i ++ {
 		log_info(strconv.Itoa(i), fmt.Sprintf("Iteration number %d", i))
+		time.Sleep(2 * time.Second)
 	}
 
+	// https://stackoverflow.com/questions/75021947/wrong-timestamp-displayed-in-opensearch-dashboards
+	// https://stackoverflow.com/questions/75156043/ingest-pipeline-not-preserving-the-date-type-field
 	test := ``
 	close(logc)
 	s := " "
-	t0_json := time.Now()
+	// t0_json := time.Now()
 	for i := range logc {
 		log, err := json.Marshal(i)
 		if err != nil {
@@ -214,17 +217,19 @@ func main() {
 		s = string(log)+"\n"
 		test += s
 	}
-	t1_json := time.Now()
-	ms_json := float64(t1_json.Sub(t0_json) / time.Millisecond)
 
-	t0_bulk := time.Now()
+	fmt.Println(test)
+
+	// t1_json := time.Now()
+	// ms_json := float64(t1_json.Sub(t0_json) / time.Millisecond)
+	// t0_bulk := time.Now()
 	res, err := client.Bulk(strings.NewReader(test))
-	t1_bulk := time.Now()
-	ms_bulk := float64(t1_bulk.Sub(t0_bulk) / time.Millisecond)
+	// t1_bulk := time.Now()
+	// ms_bulk := float64(t1_bulk.Sub(t0_bulk) / time.Millisecond)
 	if err != nil {
 		fmt.Println(res, err)
 	}
-	fmt.Printf("Bulk Operation for %d elements took %.2f ms to run.\n", N, ms_bulk)
-	fmt.Printf("Json Encoding for %d elements took %.2f ms to run.\n", N, ms_json)
+	// fmt.Printf("Bulk Operation for %d elements took %.2f ms to run.\n", N, ms_bulk)
+	// fmt.Printf("Json Encoding for %d elements took %.2f ms to run.\n", N, ms_json)
 
 }
