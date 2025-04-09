@@ -71,7 +71,7 @@ func main() {
 		if r := recover(); r != nil {
 			logger.Infof("recovered in main: +v%\n", r)
 			OpensearchWriter.Convert()
-
+			panic(r)
 		}
 	}()
 
