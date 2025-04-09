@@ -81,7 +81,7 @@ func (ow *OpenSearchWriterProxy) Convert() {
 		totalLength int
 	)
 
-	ow.Close()
+	// ow.Close()
 	for message := range ow.LogMessagesChannel {
 		messageLength := len(message)
 
@@ -119,7 +119,7 @@ func (ow *OpenSearchWriterProxy) SendToSqs(QueueName string) error {
 	// )
 
 	MessageBodyByte, _ := json.Marshal(ow.LogMessagesSlice)
-	MessageBodyString := string(MessageBodyByte)
+	MessageBodyString := MessageBodyByte
 	// _, LogSqsClientErr = LogSqsClient.SendMessage(&sqs.SendMessageInput{
 	// 	MessageBody: &MessageBodyString,
 	// 	QueueUrl:    &QueueName,

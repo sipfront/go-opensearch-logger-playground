@@ -1,11 +1,13 @@
 package main
 
 import (
+	"context"
+	"fmt"
 	"io"
-	"os"
+	"strings"
+	"time"
 
 	"github.com/sirupsen/logrus"
-	// "github.com/sirupsen/logrus"
 )
 
 var (
@@ -13,6 +15,73 @@ var (
 	logger        *logrus.Entry  = nil
 	environment   string         = "dev"
 )
+
+// finalizeMsg takes a string message (`msg_string`) and sends it to the `recordc` channel.
+// If a panic occurs, it recovers, logs the panic, and re-panics to signal a serious error.
+func finalizeMsg(msg_string string, recordc chan<- string, ow *OpenSearchWriterProxy) {
+	defer func() {
+		// Recover from any panic and log the error, then re-panic
+		if r := recover(); r != nil {
+			logger.Info("Oh no something bad happened in FinalizeMsg - Better send the logs to somewhere safe")
+			// logger.Infof("Recovered in finalizeMessage %+v", r)
+			ow.Convert()
+		}
+	}()
+	// Send the message to the `recordc` channel
+	recordc <- msg_string
+}
+
+// conditionProcessor continuously processes messages from the `in` channel and
+// finalizes them using the `finalizeMsg` function. It stops processing when the context is done.
+func conditionProcessor(in <-chan int, recordc chan<- string, ctx context.Context, ow *OpenSearchWriterProxy) {
+	// Launch a goroutine to process messages from the `in` channel
+	go func() {
+		defer func() {
+			// Recover from any panic and log the error, then re-panic
+			if r := recover(); r != nil {
+				logger.Info("Oh no something bad happened in conditionProcessor - Better send the logs to somewhere safe")
+			}
+		}()
+
+		for {
+			select {
+			case s := <-in:
+				// Process the input by repeating "A" `s` times and sending it to the record channel
+				finalizeMsg(strings.Repeat("A", s), recordc, ow)
+			case x := <-ctx.Done():
+				// Handle context cancellation or timeout
+				fmt.Printf("%+v\n", x)
+				return
+			}
+		}
+	}()
+}
+
+// psqlSink continuously processes messages from the `in` channel and
+// finalizes them using the `finalizeMsg` function. It stops processing when the context is done.
+func psqlSink(in <-chan int, recordc chan<- string, ctx context.Context, ow *OpenSearchWriterProxy) {
+	// Launch a goroutine to process messages from the `in` channel
+	go func() {
+		defer func() {
+			// Recover from any panic and log the error, then re-panic
+			if r := recover(); r != nil {
+				logger.Info("Oh no something bad happened in psqlSink - Better send the logs to somewhere safe")
+			}
+		}()
+
+		for {
+			select {
+			case s := <-in:
+				// Process the input by repeating "A" `s` times and sending it to the record channel
+				finalizeMsg(strings.Repeat("B", s), recordc, ow)
+			case x := <-ctx.Done():
+				// Handle context cancellation or timeout
+				fmt.Printf("%+v\n", x)
+				return
+			}
+		}
+	}()
+}
 
 // -------------------------------------------------------------------------------------------------
 func main() {
@@ -37,20 +106,20 @@ func main() {
 		logger_client.SetOutput(io.Discard) // Send all logs to nowhere by default
 		logger_client.SetLevel(logrus.InfoLevel)
 
-		logger_client.AddHook(
-			&FormatterHook{
-				Writer: os.Stdout,
-				LogLevels: []logrus.Level{
-					logrus.PanicLevel,
-					logrus.FatalLevel,
-					logrus.ErrorLevel,
-					logrus.WarnLevel,
-					logrus.InfoLevel,
-				},
-				Formatter: &logrus.TextFormatter{
-					DisableTimestamp: true,
-				},
-			})
+		// logger_client.AddHook(
+		// 	&FormatterHook{
+		// 		Writer: os.Stdout,
+		// 		LogLevels: []logrus.Level{
+		// 			logrus.PanicLevel,
+		// 			logrus.FatalLevel,
+		// 			logrus.ErrorLevel,
+		// 			logrus.WarnLevel,
+		// 			logrus.InfoLevel,
+		// 		},
+		// 		Formatter: &logrus.TextFormatter{
+		// 			DisableTimestamp: true,
+		// 		},
+		// 	})
 
 		logger_client.AddHook(
 			&FormatterHook{
@@ -66,14 +135,80 @@ func main() {
 			})
 	}
 
-	logger.Info("This-is-a-test")
-	defer func() {
-		if r := recover(); r != nil {
-			logger.Infof("recovered in main: +v%\n", r)
-			OpensearchWriter.Convert()
-			panic(r)
+	// Create a context with a timeout of 5 seconds
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*1)
+	defer cancel() // Ensure the context is canceled when the main function exits
+
+	// Channel to send processed strings
+	recordc := make(chan string)
+	// defer close(recordc)
+	// Note: the `recordc` channel is not explicitly closed in the original code.
+	// Uncommenting `defer close(recordc)` would cause an issue since `conditionProcessor`
+	// and the main loop access this channel concurrently.
+
+	// Channel for synchronization with the main goroutine
+	wg := make(chan int)
+	defer close(wg)
+
+	// Channel for sending integer inputs to the conditionProcessor
+	in := make(chan int)
+	defer close(in)
+
+	// Start the conditionProcessor to process input values
+	for i := 0; i < 3; i++ {
+		conditionProcessor(in, recordc, ctx, OpensearchWriter)
+	}
+
+	// Start the psqlSink to process input values
+	for i := 0; i < 3; i++ {
+		psqlSink(in, recordc, ctx, OpensearchWriter)
+	}
+
+	// Launch a goroutine to send increasing integers to the `in` channel
+	go func() {
+		defer func() { wg <- 42 }() // Notify the main goroutine when processing is done
+		c := 1
+		for {
+			select {
+			case in <- c:
+				// Increment and send integers to the `in` channel
+			case <-ctx.Done():
+				// Stop sending integers if the context is done
+				return
+			}
+			c++
 		}
 	}()
 
-	panic("Test panic")
+	// Recover from any panic in `main` and handle nested recovery if needed
+	defer func() {
+		if r := recover(); r != nil {
+			// Nested recovery to handle issues during recovery
+			fmt.Println("Hello")
+			defer func() {
+				if r := recover(); r != nil {
+					logger.Infof("Recovered in recovered main %+v\n", r)
+					panic(r)
+
+				}
+			}()
+		}
+	}()
+
+	// Close the `recordc` channel (this will terminate the loop reading from `recordc`)
+	// Read and print 7 messages from the `recordc` channel or stop when it's closed
+	// defer close(recordc)
+	close(recordc)
+	for i := 0; i < 7; i++ {
+		if _, ok := <-recordc; !ok {
+			// Exit the loop if the `recordc` channel is closed
+			break
+		} else {
+			// Print the next message from the `recordc` channel
+			fmt.Println(<-recordc)
+		}
+	}
+
+	// Synchronize with the goroutine launched on line 68 using the `wg` channel
+	fmt.Println(<-wg)
 }
