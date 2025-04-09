@@ -74,29 +74,20 @@ func (ow *OpenSearchWriterProxy) Close() {
 }
 
 // 'Convert' the content of the channel into a slice
-func (ow *OpenSearchWriterProxy) Convert() int {
+func (ow *OpenSearchWriterProxy) Convert() {
 	var (
 		err         error
 		totalLength int
 	)
 
-	defer func() {
-		if r := recover(); r != nil {
-			// logger_client.Info("Oh no something bad happened in FinalizeMsg - Better send the logs to somewhere safe")
-			fmt.Println("Recovered")
-		}
-	}()
-
-	ow.Close()
+	// ow.Close()
 	for message := range ow.LogMessagesChannel {
 		messageLength := len(message)
-
-		if messageLength+totalLength > 50000 {
+		if messageLength+totalLength > 1000 {
 			err = ow.SendToSqs("sipfront-log-sqs-" + environment)
 			if err != nil {
 				fmt.Printf("%s\n", err.Error())
 			}
-
 			// Clear Slice
 			ow.LogMessagesSlice = nil
 			totalLength = 0
@@ -109,10 +100,7 @@ func (ow *OpenSearchWriterProxy) Convert() int {
 	err = ow.SendToSqs("sipfront-log-sqs-" + environment)
 	if err != nil {
 		fmt.Printf("%s\n", err.Error())
-		return 0
 	}
-
-	return 1
 }
 
 // Send the slice to

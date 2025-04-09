@@ -19,14 +19,13 @@ var (
 // finalizeMsg takes a string message (`msg_string`) and sends it to the `recordc` channel.
 // If a panic occurs, it recovers, logs the panic, and re-panics to signal a serious error.
 func finalizeMsg(msg_string string, recordc chan<- string, ow *OpenSearchWriterProxy) {
-	fmt.Println("in finalizeMsg")
+	logger.Info("in finalizeMsg")
 	defer func() {
-		fmt.Println("defered func call in finalizeMsg")
+		logger.Info("defered func call in finalizeMsg")
 		if r := recover(); r != nil {
-			defer func() {
-				fmt.Println("recovered ow")
-			}()
+			logger.Infof("in recovery block inside of finalizeMsg %+v\n", r)
 			ow.Convert()
+			panic("r")
 		}
 	}()
 
@@ -37,9 +36,20 @@ func finalizeMsg(msg_string string, recordc chan<- string, ow *OpenSearchWriterP
 // conditionProcessor continuously processes messages from the `in` channel and
 // finalizes them using the `finalizeMsg` function. It stops processing when the context is done.
 func conditionProcessor(in <-chan int, recordc chan<- string, ctx context.Context, ow *OpenSearchWriterProxy) {
+	logger.Info("in conditionProcessor")
+	// defer func() {
+	// 	logger.Info("defered func call in conditionProcessor")
+	// 	if r := recover(); r != nil {
+	// 		logger.Infof("in recovery block inside of conditionProcessor %+v\n", r)
+	// 		ow.Convert()
+	// 		panic("panic in conditionPocessor")
+	// 	}
+	// }()
+
 	// Launch a goroutine to process messages from the `in` channel
 	go func() {
 		for {
+			time.Sleep(time.Second * 2)
 			select {
 			case s := <-in:
 				// Process the input by repeating "A" `s` times and sending it to the record channel
@@ -57,8 +67,18 @@ func conditionProcessor(in <-chan int, recordc chan<- string, ctx context.Contex
 // finalizes them using the `finalizeMsg` function. It stops processing when the context is done.
 func psqlSink(in <-chan int, recordc chan<- string, ctx context.Context, ow *OpenSearchWriterProxy) {
 	// Launch a goroutine to process messages from the `in` channel
+	// defer func() {
+	// 	logger.Info("defered func call in psqlSink")
+	// 	if r := recover(); r != nil {
+	// 		logger.Infof("in recovery block inside of psqlSink %+v\n", r)
+	// 		ow.Convert()
+	// 		panic("panic in psqlSink")
+	// 	}
+	// }()
+
 	go func() {
 		for {
+			time.Sleep(time.Second)
 			select {
 			case s := <-in:
 				// Process the input by repeating "A" `s` times and sending it to the record channel
@@ -122,7 +142,7 @@ func main() {
 	}
 
 	// Create a context with a timeout of 5 seconds
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*1)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel() // Ensure the context is canceled when the main function exits
 
 	// Channel to send processed strings
@@ -139,14 +159,6 @@ func main() {
 	// Channel for sending integer inputs to the conditionProcessor
 	in := make(chan int)
 	defer close(in)
-
-	defer func() {
-		fmt.Println(<-wg)
-		if r := recover(); r != nil {
-			fmt.Println("Hello")
-			OpensearchWriter.Convert()
-		}
-	}()
 
 	// Start the conditionProcessor to process input values
 	for i := 0; i < 3; i++ {
@@ -174,13 +186,12 @@ func main() {
 		}
 	}()
 
+	logger.Info("Ich bin eine Schlonze")
 	// Close the `recordc` channel (this will terminate the loop reading from `recordc`)
 	// Read and print 7 messages from the `recordc` channel or stop when it's closed
 	// defer close(recordc)
 	for i := 0; i < 7; i++ {
 		if _, ok := <-recordc; !ok {
-			// Exit the loop if the `recordc` channel is closed
-			fmt.Println("stopped")
 			break
 		} else {
 			// Print the next message from the `recordc` channel
@@ -193,4 +204,5 @@ func main() {
 	}
 
 	// Synchronize with the goroutine launched on line 68 using the `wg` channel
+	fmt.Println(<-wg)
 }
