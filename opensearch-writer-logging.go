@@ -74,14 +74,20 @@ func (ow *OpenSearchWriterProxy) Close() {
 }
 
 // 'Convert' the content of the channel into a slice
-func (ow *OpenSearchWriterProxy) Convert() {
-
+func (ow *OpenSearchWriterProxy) Convert() int {
 	var (
 		err         error
 		totalLength int
 	)
 
-	// ow.Close()
+	defer func() {
+		if r := recover(); r != nil {
+			// logger_client.Info("Oh no something bad happened in FinalizeMsg - Better send the logs to somewhere safe")
+			fmt.Println("Recovered")
+		}
+	}()
+
+	ow.Close()
 	for message := range ow.LogMessagesChannel {
 		messageLength := len(message)
 
@@ -103,33 +109,16 @@ func (ow *OpenSearchWriterProxy) Convert() {
 	err = ow.SendToSqs("sipfront-log-sqs-" + environment)
 	if err != nil {
 		fmt.Printf("%s\n", err.Error())
+		return 0
 	}
+
+	return 1
 }
 
 // Send the slice to
 func (ow *OpenSearchWriterProxy) SendToSqs(QueueName string) error {
-	// SqsSession := session.Must(session.NewSessionWithOptions(
-	// 	session.Options{SharedConfigState: session.SharedConfigEnable},
-	// ),
-	// )
-
-	//var (
-	//	LogSqsClientErr error
-	// 	LogSqsClient    *sqs.SQS = sqs.New(SqsSession)
-	// )
-
 	MessageBodyByte, _ := json.Marshal(ow.LogMessagesSlice)
-	MessageBodyString := MessageBodyByte
-	// _, LogSqsClientErr = LogSqsClient.SendMessage(&sqs.SendMessageInput{
-	// 	MessageBody: &MessageBodyString,
-	// 	QueueUrl:    &QueueName,
-	// },
-	// )
+	MessageBodyString := string(MessageBodyByte)
 	fmt.Println(MessageBodyString)
-
-	// if LogSqsClientErr != nil {
-	// 	return LogSqsClientErr
-	// }
-
 	return nil
 }

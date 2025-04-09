@@ -19,14 +19,17 @@ var (
 // finalizeMsg takes a string message (`msg_string`) and sends it to the `recordc` channel.
 // If a panic occurs, it recovers, logs the panic, and re-panics to signal a serious error.
 func finalizeMsg(msg_string string, recordc chan<- string, ow *OpenSearchWriterProxy) {
+	fmt.Println("in finalizeMsg")
 	defer func() {
-		// Recover from any panic and log the error, then re-panic
+		fmt.Println("defered func call in finalizeMsg")
 		if r := recover(); r != nil {
-			logger.Info("Oh no something bad happened in FinalizeMsg - Better send the logs to somewhere safe")
-			// logger.Infof("Recovered in finalizeMessage %+v", r)
+			defer func() {
+				fmt.Println("recovered ow")
+			}()
 			ow.Convert()
 		}
 	}()
+
 	// Send the message to the `recordc` channel
 	recordc <- msg_string
 }
@@ -36,13 +39,6 @@ func finalizeMsg(msg_string string, recordc chan<- string, ow *OpenSearchWriterP
 func conditionProcessor(in <-chan int, recordc chan<- string, ctx context.Context, ow *OpenSearchWriterProxy) {
 	// Launch a goroutine to process messages from the `in` channel
 	go func() {
-		defer func() {
-			// Recover from any panic and log the error, then re-panic
-			if r := recover(); r != nil {
-				logger.Info("Oh no something bad happened in conditionProcessor - Better send the logs to somewhere safe")
-			}
-		}()
-
 		for {
 			select {
 			case s := <-in:
@@ -62,13 +58,6 @@ func conditionProcessor(in <-chan int, recordc chan<- string, ctx context.Contex
 func psqlSink(in <-chan int, recordc chan<- string, ctx context.Context, ow *OpenSearchWriterProxy) {
 	// Launch a goroutine to process messages from the `in` channel
 	go func() {
-		defer func() {
-			// Recover from any panic and log the error, then re-panic
-			if r := recover(); r != nil {
-				logger.Info("Oh no something bad happened in psqlSink - Better send the logs to somewhere safe")
-			}
-		}()
-
 		for {
 			select {
 			case s := <-in:
@@ -98,12 +87,9 @@ func main() {
 	OpensearchWriter := NewOpenSearchWriterProxy(writerCap)
 	if logger_client == nil {
 		logger_client = logrus.New()
-		fields := logrus.Fields{
-			"function_name": "test_function",
-		}
-
+		fields := logrus.Fields{"function_name": "test_function"}
 		logger = logger_client.WithFields(fields)
-		logger_client.SetOutput(io.Discard) // Send all logs to nowhere by default
+		logger_client.SetOutput(io.Discard)
 		logger_client.SetLevel(logrus.InfoLevel)
 
 		// logger_client.AddHook(
@@ -154,6 +140,14 @@ func main() {
 	in := make(chan int)
 	defer close(in)
 
+	defer func() {
+		fmt.Println(<-wg)
+		if r := recover(); r != nil {
+			fmt.Println("Hello")
+			OpensearchWriter.Convert()
+		}
+	}()
+
 	// Start the conditionProcessor to process input values
 	for i := 0; i < 3; i++ {
 		conditionProcessor(in, recordc, ctx, OpensearchWriter)
@@ -180,35 +174,23 @@ func main() {
 		}
 	}()
 
-	// Recover from any panic in `main` and handle nested recovery if needed
-	defer func() {
-		if r := recover(); r != nil {
-			// Nested recovery to handle issues during recovery
-			fmt.Println("Hello")
-			defer func() {
-				if r := recover(); r != nil {
-					logger.Infof("Recovered in recovered main %+v\n", r)
-					panic(r)
-
-				}
-			}()
-		}
-	}()
-
 	// Close the `recordc` channel (this will terminate the loop reading from `recordc`)
 	// Read and print 7 messages from the `recordc` channel or stop when it's closed
 	// defer close(recordc)
-	close(recordc)
 	for i := 0; i < 7; i++ {
 		if _, ok := <-recordc; !ok {
 			// Exit the loop if the `recordc` channel is closed
+			fmt.Println("stopped")
 			break
 		} else {
 			// Print the next message from the `recordc` channel
 			fmt.Println(<-recordc)
 		}
+
+		if i == 2 {
+			close(recordc)
+		}
 	}
 
 	// Synchronize with the goroutine launched on line 68 using the `wg` channel
-	fmt.Println(<-wg)
 }
